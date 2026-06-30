@@ -513,22 +513,11 @@ app.get('/api/proveedor/info', requiereLogin, (req, res) => {
 });
 
 app.post('/api/proveedor/datos', requiereLogin, (req, res) => {
-    const { razon_social, rfc, representante, telefono, direccion } = req.body;    
-    // Validar que no estén vacíos
-    if (!razon_social || !rfc || !representante || !telefono || !direccion) {
-        return res.status(400).json({ error: 'Todos los campos de datos de la empresa son obligatorios' });
-    }
-    const prov = db.prepare('SELECT * FROM proveedores WHERE usuario_id = ?').get(req.session.usuario.id);    
-    // Determinar si el perfil está completo (todos los campos tienen datos)
-    const perfilCompleto = (razon_social && rfc && representante && telefono && direccion) ? 1 : 0;
-    db.prepare(`
-        UPDATE proveedores 
-        SET razon_social=?, rfc=?, representante=?, telefono=?, direccion=?, perfil_completo=? 
-        WHERE usuario_id=?
-    `).run(razon_social, rfc, representante, telefono, direccion, perfilCompleto, req.session.usuario.id);    
-    registrarHistorial(prov.id, req.session.usuario, 'datos_actualizados', 
-        `Datos actualizados. Razón social: ${razon_social}. Perfil completo: ${perfilCompleto ? 'Sí' : 'No'}`, null, null, req);    
-    res.json({ ok: true, perfil_completo: perfilCompleto });
+  const { razon_social, rfc, representante, telefono, direccion } = req.body;
+  const prov = db.prepare('SELECT * FROM proveedores WHERE usuario_id = ?').get(req.session.usuario.id);
+  db.prepare('UPDATE proveedores SET razon_social=?, rfc=?, representante=?, telefono=?, direccion=? WHERE usuario_id=?').run(razon_social, rfc, representante, telefono, direccion, req.session.usuario.id);
+  registrarHistorial(prov.id, req.session.usuario, 'datos_actualizados', `Datos actualizados. Razón social: ${razon_social || '—'}`, null, null, req);
+  res.json({ ok: true });
 });
 
 // 📄 PROVEEDOR SUBE/REEMPLAZA DOCUMENTO (con notificación al admin)
