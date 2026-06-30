@@ -148,7 +148,8 @@ const migraciones = [
   { tabla: 'historial', campo: 'ip_origen', tipo: 'TEXT' },
   { tabla: 'notas_proveedor', campo: 'leida', tipo: 'INTEGER DEFAULT 0' },
   { tabla: 'notas_proveedor', campo: 'cerrada', tipo: 'INTEGER DEFAULT 0' },
-  { tabla: 'recordatorios', campo: 'cerrada', tipo: 'INTEGER DEFAULT 0' }
+  { tabla: 'recordatorios', campo: 'cerrada', tipo: 'INTEGER DEFAULT 0' },
+  { tabla: 'proveedores', campo: 'perfil_completo', tipo: 'INTEGER DEFAULT 0' }
 ];
 
 let migracionesAplicadas = 0;
@@ -176,6 +177,24 @@ if (migracionesAplicadas > 0) {
 
 if (migracionesFallidas > 0) {
   console.log(`⚠️  ${migracionesFallidas} migración(es) fallida(s)`);
+}
+// 🔄 Auto-completar perfiles de proveedores que ya tenían sus datos llenos antes de esta actualización
+try {
+    const actualizados = db.prepare(`
+        UPDATE proveedores 
+        SET perfil_completo = 1 
+        WHERE perfil_completo = 0 
+        AND razon_social IS NOT NULL AND razon_social != ''
+        AND rfc IS NOT NULL AND rfc != ''
+        AND representante IS NOT NULL AND representante != ''
+        AND telefono IS NOT NULL AND telefono != ''
+        AND direccion IS NOT NULL AND direccion != ''
+    `).run();
+    if (actualizados.changes > 0) {
+        console.log(`✅ ${actualizados.changes} proveedor(es) existente(s) marcado(s) como perfil completo`);
+    }
+} catch (e) {
+    console.log('⚠️ Error auto-completando perfiles:', e.message);
 }
 
 
