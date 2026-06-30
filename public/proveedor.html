@@ -7,40 +7,13 @@
     <!-- Hoja de estilos principal -->
     <link rel="stylesheet" href="style.css">
     <style>
-        /* ==========================================
-           ESTILOS ESPECÍFICOS PARA EL BLOQUEO DE PERFIL
-           ========================================== */
-        /* Clase que se aplica a las pestañas cuando el perfil está incompleto */
-        .tab-bloqueada {
-            opacity: 0.4 !important;
-            pointer-events: none !important; /* Desactiva los clics */
-            cursor: not-allowed !important;
-            filter: grayscale(100%);
-        }
-        /* Estilo para la alerta de perfil incompleto */
-        .alerta-perfil-incompleto {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border-left: 5px solid #dc2626;
-            color: #991b1b;
-            padding: 1.2rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-size: 1rem;
-            font-weight: 500;
-            text-align: center;
-            display: none; /* Oculta por defecto, se muestra con JS si es necesario */
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+
     </style>
 </head>
 <body>
 
     <!-- ==========================================
-         NAVBAR SUPERIOR
+         1. BARRA DE NAVEGACIÓN SUPERIOR
          ========================================== -->
     <nav class="navbar">
         <h1>🏢 Panel del Proveedor</h1>
@@ -50,7 +23,7 @@
     <div class="container">
         
         <!-- ==========================================
-             ALERTA DE PERFIL INCOMPLETO (NUEVO)
+             2. ALERTA DE PERFIL INCOMPLETO (NUEVO)
              Se muestra si el proveedor no ha llenado sus datos
              ========================================== -->
         <div id="alerta-perfil-incompleto" class="alerta-perfil-incompleto">
@@ -58,7 +31,7 @@
         </div>
 
         <!-- ==========================================
-             TARJETA DE ESTADO GENERAL
+             3. TARJETA DE ESTADO GENERAL
              ========================================== -->
         <div class="card">
             <h3>📊 Estado de tu registro</h3>
@@ -68,7 +41,7 @@
         </div>
 
         <!-- ==========================================
-             PESTAÑAS (TABS) DE NAVEGACIÓN
+             4. PESTAÑAS (TABS) DE NAVEGACIÓN
              ========================================== -->
         <div class="tabs" id="tabs-container">
             <button class="tab active" data-tab="documentos">📄 Documentos</button>
@@ -77,20 +50,19 @@
         </div>
 
         <!-- ==========================================
-             SECCIÓN 1: DOCUMENTOS
+             5. SECCIÓN: DOCUMENTOS
              ========================================== -->
         <div id="seccion-documentos" class="tab-content">
             <div class="card">
                 <h3>Documentación requerida</h3>
                 <div id="lista-requerimientos" class="doc-grid">
-                    <!-- Se llena dinámicamente con JS -->
                     <p>Cargando documentos...</p>
                 </div>
             </div>
         </div>
 
         <!-- ==========================================
-             SECCIÓN 2: MIS DATOS (DATOS DE LA EMPRESA)
+             6. SECCIÓN: MIS DATOS (DATOS DE LA EMPRESA)
              ========================================== -->
         <div id="seccion-datos" class="tab-content" style="display: none;">
             <div class="card">
@@ -122,7 +94,7 @@
         </div>
 
         <!-- ==========================================
-             SECCIÓN 3: HISTORIAL
+             7. SECCIÓN: HISTORIAL
              ========================================== -->
         <div id="seccion-historial" class="tab-content" style="display: none;">
             <div class="card">
@@ -137,7 +109,7 @@
     </div>
 
     <!-- ==========================================
-         MODAL: CAMBIO DE CONTRASEÑA OBLIGATORIO
+         8. MODAL: CAMBIO DE CONTRASEÑA OBLIGATORIO
          ========================================== -->
     <div id="modalPassword" class="modal-overlay">
         <div class="modal">
@@ -163,7 +135,7 @@
     </div>
 
     <!-- ==========================================
-         MODAL: VISOR DE DOCUMENTOS PDF
+         9. MODAL: VISOR DE DOCUMENTOS PDF
          ========================================== -->
     <div id="modalVisor" class="modal-overlay">
         <div class="modal">
@@ -176,83 +148,67 @@
     </div>
 
     <!-- ==========================================
-         JAVASCRIPT PRINCIPAL
+         10. JAVASCRIPT PRINCIPAL
          ========================================== -->
     <script>
         // ==========================================
-        // 1. VARIABLES GLOBALES Y ESTADO DE LA APP
+        // VARIABLES GLOBALES
         // ==========================================
         let proveedorActual = null; // Guardará la info del proveedor logueado
         let perfilCompleto = false; // Controla si el usuario puede ver otras pestañas
 
         // ==========================================
-        // 2. INICIALIZACIÓN AL CARGAR LA PÁGINA
+        // INICIALIZACIÓN AL CARGAR LA PÁGINA
         // ==========================================
         document.addEventListener('DOMContentLoaded', async () => {
-            // Paso 1: Verificar si hay sesión activa
-            await verificarSesion();
+            await verificarSesion();      // 1. Verificar si hay sesión activa
+            await cargarInfoProveedor();  // 2. Cargar información del proveedor
+            await aplicarBloqueoSiEsNecesario(); // 3. ⭐ NUEVO: Bloquear panel si faltan datos
+            configurarEventos();          // 4. Configurar clicks de tabs, formularios, etc.
             
-            // Paso 2: Cargar información del proveedor
-            await cargarInfoProveedor();
-            
-            // Paso 3: Verificar si el perfil está completo y aplicar bloqueos si es necesario
-            await verificarYBloquearPanel();
-            
-            // Paso 4: Configurar eventos de los formularios y pestañas
-            configurarEventos();
+            // Si el perfil está completo, cargar el resto de la info
+            if (perfilCompleto) {
+                cargarDocumentos();
+                cargarHistorial();
+            }
         });
 
         // ==========================================
-        // 3. FUNCIONES DE SESIÓN Y AUTENTICACIÓN
+        // FUNCIONES DE SESIÓN
         // ==========================================
-        
-        /**
-         * Verifica si el usuario está logueado.
-         * Si no lo está, lo redirige al login.
-         */
         async function verificarSesion() {
             try {
                 const res = await fetch('/api/me');
                 const data = await res.json();
-                
                 if (!data.usuario) {
                     window.location.href = 'index.html';
                     return;
                 }
-
-                // Si debe cambiar la contraseña, mostrar el modal obligatorio
                 if (data.debe_cambiar_password) {
                     document.getElementById('modalPassword').classList.add('active');
                 }
             } catch (error) {
-                console.error('Error verificando sesión:', error);
                 window.location.href = 'index.html';
             }
         }
 
-        /**
-         * Cierra la sesión del usuario
-         */
         async function cerrarSesion() {
             await fetch('/api/logout', { method: 'POST' });
             window.location.href = 'index.html';
         }
 
         // ==========================================
-        // 4. LÓGICA DE BLOQUEO DE PANEL (NUEVO)
+        // ⭐ LÓGICA DE BLOQUEO DE PANEL (NUEVO)
         // ==========================================
-
         /**
-         * Verifica el estado del perfil del proveedor.
-         * Si no está completo, bloquea las pestañas de Documentos e Historial,
+         * Verifica si los datos de la empresa están llenos.
+         * Si no lo están, bloquea las pestañas de Documentos e Historial,
          * muestra una alerta y fuerza al usuario a ir a la pestaña "Mis datos".
          */
-        async function verificarYBloquearPanel() {
+        async function aplicarBloqueoSiEsNecesario() {
             const alerta = document.getElementById('alerta-perfil-incompleto');
             const tabs = document.querySelectorAll('.tab');
             
-            // Verificamos si los datos esenciales están llenos en la base de datos
-            // (El backend nos devuelve perfil_completo = 1 o 0 en /api/proveedor/info)
             if (!perfilCompleto) {
                 // 1. Mostrar la alerta de acción requerida
                 alerta.style.display = 'block';
@@ -260,9 +216,10 @@
                 // 2. Bloquear visualmente las pestañas que no son "Mis datos"
                 tabs.forEach(tab => {
                     if (tab.dataset.tab !== 'datos') {
-                        tab.classList.add('tab-bloqueada');
+                        tab.classList.add('tab-bloqueada'); // Aplica el CSS de bloqueo
                     } else {
                         tab.classList.remove('tab-bloqueada');
+                        tab.click(); // Fuerza al usuario a ir a la pestaña de datos
                     }
                 });
 
@@ -270,27 +227,16 @@
                 document.getElementById('seccion-documentos').style.display = 'none';
                 document.getElementById('seccion-historial').style.display = 'none';
                 
-                // 4. Forzar al usuario a ver la pestaña de "Mis datos"
-                cambiarTab('datos');
-                
             } else {
                 // Si el perfil SÍ está completo, desbloquear todo
                 alerta.style.display = 'none';
                 tabs.forEach(tab => tab.classList.remove('tab-bloqueada'));
-                
-                // Cargar las secciones normales
-                cargarRequerimientos();
-                cargarHistorial();
             }
         }
 
         // ==========================================
-        // 5. CARGA DE DATOS DEL PROVEEDOR
+        // CARGA DE DATOS DEL PROVEEDOR
         // ==========================================
-
-        /**
-         * Obtiene la información actual del proveedor desde el backend
-         */
         async function cargarInfoProveedor() {
             try {
                 const res = await fetch('/api/proveedor/info');
@@ -308,9 +254,14 @@
                 document.getElementById('inp-telefono').value = proveedorActual.telefono || '';
                 document.getElementById('inp-direccion').value = proveedorActual.direccion || '';
 
-                // ⭐ CLAVE: Determinar si el perfil está completo
-                // El backend debe devolver perfil_completo = 1 si todos los campos están llenos
-                perfilCompleto = (proveedorActual.perfil_completo === 1);
+                // ⭐ CLAVE: Determinar si el perfil está completo (los 5 campos obligatorios)
+                perfilCompleto = (
+                    proveedorActual.razon_social && proveedorActual.razon_social.trim() !== '' &&
+                    proveedorActual.rfc && proveedorActual.rfc.trim() !== '' &&
+                    proveedorActual.representante && proveedorActual.representante.trim() !== '' &&
+                    proveedorActual.telefono && proveedorActual.telefono.trim() !== '' &&
+                    proveedorActual.direccion && proveedorActual.direccion.trim() !== ''
+                );
 
             } catch (error) {
                 console.error('Error cargando info del proveedor:', error);
@@ -318,36 +269,25 @@
         }
 
         // ==========================================
-        // 6. NAVEGACIÓN ENTRE PESTAÑAS (TABS)
+        // NAVEGACIÓN ENTRE PESTAÑAS (TABS)
         // ==========================================
-
-        /**
-         * Cambia la pestaña activa y muestra su contenido
-         * @param {string} tabName - Nombre del tab (documentos, datos, historial)
-         */
         function cambiarTab(tabName) {
             // Si el tab está bloqueado, no hacer nada
             const tabButton = document.querySelector(`.tab[data-tab="${tabName}"]`);
             if (tabButton && tabButton.classList.contains('tab-bloqueada')) return;
 
-            // Quitar clase active de todos los tabs y ocultar todas las secciones
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
 
-            // Activar el tab seleccionado y mostrar su sección
             if (tabButton) tabButton.classList.add('active');
             const seccion = document.getElementById(`seccion-${tabName}`);
             if (seccion) seccion.style.display = 'block';
         }
 
         // ==========================================
-        // 7. GESTIÓN DE DOCUMENTOS
+        // GESTIÓN DE DOCUMENTOS (TU LÓGICA ORIGINAL)
         // ==========================================
-
-        /**
-         * Carga la lista de documentos requeridos y el estado de cada uno
-         */
-        async function cargarRequerimientos() {
+        async function cargarDocumentos() {
             try {
                 const [requeridosRes, docsRes] = await Promise.all([
                     fetch('/api/proveedor/requerimientos'),
@@ -397,10 +337,6 @@
             }
         }
 
-        /**
-         * Abre un diálogo para seleccionar y subir un archivo PDF
-         * @param {string} tipo - Tipo de documento (ej. 'rut', 'camara_comercio')
-         */
         async function subirDocumento(tipo) {
             const input = document.createElement('input');
             input.type = 'file';
@@ -423,8 +359,8 @@
                     
                     if (data.ok) {
                         alert('✅ Documento subido correctamente. Queda pendiente de revisión.');
-                        cargarRequerimientos(); // Recargar lista
-                        cargarInfoProveedor(); // Recargar estado general
+                        cargarDocumentos();
+                        cargarInfoProveedor(); // Refrescar estado general
                     } else {
                         alert('❌ Error: ' + (data.error || 'No se pudo subir el archivo'));
                     }
@@ -436,12 +372,8 @@
         }
 
         // ==========================================
-        // 8. GESTIÓN DE HISTORIAL
+        // GESTIÓN DE HISTORIAL
         // ==========================================
-
-        /**
-         * Carga y muestra el historial de acciones del proveedor
-         */
         async function cargarHistorial() {
             try {
                 const res = await fetch('/api/proveedor/historial');
@@ -472,19 +404,18 @@
         }
 
         // ==========================================
-        // 9. CONFIGURACIÓN DE EVENTOS (FORMULARIOS Y BOTONES)
+        // CONFIGURACIÓN DE EVENTOS (CLICKS Y FORMULARIOS)
         // ==========================================
-
         function configurarEventos() {
-            // --- Event Listener: Navegación de Pestañas ---
+            // Navegación de Pestañas
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => cambiarTab(tab.dataset.tab));
             });
 
-            // --- Event Listener: Botón Cerrar Sesión ---
+            // Botón Cerrar Sesión
             document.getElementById('btnLogout').addEventListener('click', cerrarSesion);
 
-            // --- Event Listener: Guardar Datos de la Empresa ---
+            // ⭐ Guardar Datos de la Empresa
             document.getElementById('form-datos-empresa').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
@@ -496,7 +427,6 @@
                     direccion: document.getElementById('inp-direccion').value.trim()
                 };
 
-                // Validación rápida en el frontend
                 if (!datos.razon_social || !datos.rfc || !datos.representante || !datos.telefono || !datos.direccion) {
                     alert('⚠️ Todos los campos son obligatorios para completar tu perfil.');
                     return;
@@ -513,14 +443,9 @@
                     
                     if (data.ok) {
                         alert('✅ Datos guardados correctamente.');
-                        
-                        // ⭐ CLAVE: Si al guardar los datos el perfil quedó completo, 
-                        // recargamos la página para desbloquear el resto del panel.
-                        if (data.perfil_completo === 1) {
-                            location.reload(); 
-                        } else {
-                            cargarInfoProveedor(); // Si no, solo actualizamos la info
-                        }
+                        // ⭐ CLAVE: Recargamos la página para que el JS detecte que el perfil 
+                        // ya está completo y desbloquee las pestañas automáticamente.
+                        location.reload(); 
                     } else {
                         alert('❌ Error: ' + (data.error || 'No se pudieron guardar los datos'));
                     }
@@ -529,7 +454,7 @@
                 }
             });
 
-            // --- Event Listener: Cambiar Contraseña ---
+            // Cambiar Contraseña
             document.getElementById('form-cambiar-password').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const actual = document.getElementById('pass-actual').value;
@@ -563,22 +488,15 @@
         }
 
         // ==========================================
-        // 10. FUNCIONES AUXILIARES (MODALES)
+        // FUNCIONES AUXILIARES (MODALES)
         // ==========================================
-        
-        /**
-         * Cierra un modal dado su ID
-         * @param {string} modalId - ID del modal a cerrar
-         */
         function cerrarModal(modalId) {
             document.getElementById(modalId).classList.remove('active');
         }
 
-        // Cerrar modales si se hace clic fuera de ellos
         window.onclick = function(event) {
             if (event.target.classList.contains('modal-overlay')) {
-                // No permitir cerrar el modal de contraseña si es obligatorio
-                if (event.target.id === 'modalPassword') return; 
+                if (event.target.id === 'modalPassword') return; // No cerrar modal de password
                 event.target.classList.remove('active');
             }
         }

@@ -1000,3 +1000,32 @@ html { scroll-behavior: smooth; }
   #modalVisor .modal { height: 100vh; }
   #visorIframe { height: calc(100vh - 100px) !important; }
 }
+
+/* ==========================================
+BLOQUEO DE PERFIL INCOMPLETO
+========================================== */
+.tab-bloqueada {
+    opacity: 0.4 !important;
+    pointer-events: none !important; /* Desactiva los clics */
+    cursor: not-allowed !important;
+    filter: grayscale(100%);
+}
+
+.alerta-perfil-incompleto {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-left: 5px solid #dc2626;
+    color: #991b1b;
+    padding: 1.2rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+    display: none; /* Oculto por defecto, se muestra con JS */
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
