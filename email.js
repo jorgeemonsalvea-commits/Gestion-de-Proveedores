@@ -99,8 +99,61 @@ async function emailDocumentoRechazado(proveedorEmail, proveedorNombre, document
     );
 }
 
+/**
+ * 🎉 Notifica al proveedor que TODOS sus documentos fueron aprobados
+ * Este correo se envía UNA SOLA VEZ cuando el proveedor completa todos los requisitos
+ */
+async function emailProveedorAprobado(proveedorEmail, proveedorNombre) {
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 32px;">🎉 ¡Felicidades!</h1>
+            </div>
+            
+            <div style="background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #28a745; margin-top: 0;">Proveedor Aprobado</h2>
+                
+                <p>Hola <strong>${proveedorNombre}</strong>,</p>
+                
+                <p>¡Nos complace informarte que has completado exitosamente todos los requisitos de documentación!</p>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-left: 4px solid #28a745; margin: 20px 0; border-radius: 5px;">
+                    <p style="margin: 0; font-size: 16px;">
+                        ✅ <strong>Todos tus documentos han sido aprobados</strong><br>
+                        ✅ <strong>Tu cuenta de proveedor está activa</strong><br>
+                        ✅ <strong>Ya puedes participar en nuestros procesos de compra</strong>
+                    </p>
+                </div>
+                
+                <p>Ahora formas parte de nuestro directorio de proveedores autorizados. Nuestro equipo de compras podrá contactarte para futuras oportunidades de negocio.</p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://tu-portal.up.railway.app/proveedor/dashboard" 
+                       style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 16px;">
+                        Ir a mi Panel de Proveedor
+                    </a>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                    Si tienes alguna pregunta o necesitas actualizar tu información, no dudes en contactarnos.
+                </p>
+                
+                <p>¡Bienvenido a nuestro equipo de proveedores!<br>
+                <strong>Equipo de Compras</strong></p>
+            </div>
+        </div>
+    `;
+
+    return await sendEmail(
+        proveedorEmail,
+        `🎉 ¡Felicidades! Tu cuenta de proveedor ha sido aprobada`,
+        htmlContent
+    );
+}
+
 module.exports = { 
     sendEmail,
-    emailProveedorSubioDocumento,  // ← Agrega esta línea
-    emailDocumentoRechazado  // ← Agrega esta línea
+    emailProveedorSubioDocumento,
+    emailDocumentoRechazado,
+    emailProveedorAprobado  // ← Nueva función agregada
 };
