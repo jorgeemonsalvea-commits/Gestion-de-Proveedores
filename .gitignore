@@ -1,4 +1,4 @@
-# Scripts de mantenimiento
+# Scripts de mantenimiento (NUNCA subir secretos)
 reset-admin.js
 
 # Dependencias
@@ -27,3 +27,8 @@ sessions/
 Thumbs.db
 .vscode/
 .idea/
+
+# Editor
+.vscode/
+.idea/
+*.swp
