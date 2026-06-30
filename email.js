@@ -67,7 +67,40 @@ async function emailProveedorSubioDocumento(adminEmail, proveedorNombre, documen
     );
 }
 
+/**
+ * Notifica al proveedor que su documento fue RECHAZADO
+ */
+async function emailDocumentoRechazado(proveedorEmail, proveedorNombre, documentoNombre, motivo = '') {
+    const motivoHtml = motivo ? `<p><strong>Motivo:</strong> ${motivo}</p>` : '';
+    
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #dc3545;">❌ Documento Rechazado</h2>
+            <p>Hola <strong>${proveedorNombre}</strong>,</p>
+            <p>Te informamos que el siguiente documento ha sido <strong>rechazado</strong> y requiere tu atención:</p>
+            <p style="background: #f8f9fa; padding: 10px; border-left: 4px solid #dc3545;">
+                📄 <strong>${documentoNombre}</strong>
+            </p>
+            ${motivoHtml}
+            <p>Por favor, ingresa al portal para subir una versión corregida del documento.</p>
+            <a href="https://tu-portal.up.railway.app/proveedor/documentos" 
+               style="background:#007bff;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;display:inline-block;margin-top:10px;">
+                Ir al Portal
+            </a>
+            <br><br>
+            <p>Saludos,<br><strong>Equipo de Compras / Portal de Proveedores</strong></p>
+        </div>
+    `;
+
+    return await sendEmail(
+        proveedorEmail,
+        `❌ Acción requerida: Documento Rechazado (${documentoNombre})`,
+        htmlContent
+    );
+}
+
 module.exports = { 
     sendEmail,
-    emailProveedorSubioDocumento  // ← Agrega esta línea
+    emailProveedorSubioDocumento,  // ← Agrega esta línea
+    emailDocumentoRechazado  // ← Agrega esta línea
 };
