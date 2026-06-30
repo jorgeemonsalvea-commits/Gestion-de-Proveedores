@@ -23,7 +23,7 @@ async function sendEmail(toEmail, subject, htmlContent, params = {}) {
         sendSmtpEmail.htmlContent = htmlContent;
         sendSmtpEmail.sender = { 
             name: process.env.BREVO_SENDER_NAME || 'Portal de Proveedores', 
-            email: process.env.BREVO_SENDER_EMAIL 
+            email: process.env.BREVO_SENDER_EMAIL || 'adminempresapruebas1@gmail.com'
         };
         sendSmtpEmail.to = [{ email: toEmail }];
         
@@ -42,4 +42,32 @@ async function sendEmail(toEmail, subject, htmlContent, params = {}) {
     }
 }
 
-module.exports = { sendEmail };
+/**
+ * Notifica al administrador cuando un proveedor sube un documento
+ * @param {string} adminEmail - Correo del administrador
+ * @param {string} proveedorNombre - Nombre del proveedor
+ * @param {string} documentoNombre - Nombre del documento subido
+ */
+async function emailProveedorSubioDocumento(adminEmail, proveedorNombre, documentoNombre) {
+    const htmlContent = `
+        <h2>📄 Nuevo documento subido</h2>
+        <p>El proveedor <strong>${proveedorNombre}</strong> ha subido un nuevo documento.</p>
+        <p><strong>Documento:</strong> ${documentoNombre}</p>
+        <p>Por favor, revisa el documento en el Portal de Proveedores.</p>
+        <a href="https://tu-portal.up.railway.app/admin/documentos" 
+           style="background:#28a745;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;display:inline-block;margin-top:10px;">
+            Ver documentos pendientes
+        </a>
+    `;
+
+    return await sendEmail(
+        adminEmail,
+        `📄 Nuevo documento de ${proveedorNombre}`,
+        htmlContent
+    );
+}
+
+module.exports = { 
+    sendEmail,
+    emailProveedorSubioDocumento  // ← Agrega esta línea
+};
