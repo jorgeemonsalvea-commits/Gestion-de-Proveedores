@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Administrador</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <h1>⚙️ Panel de Administración</h1>
+    <div>
+      <span id="userEmail" style="margin-right:1rem;font-size:0.9rem;"></span>
+      <button onclick="logout()">Cerrar sesión</button>
+    </div>
+  </nav>
+  <div class="container">
+    <div id="alerta"></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="provs">👥 Proveedores</button>
+      <button class="tab" data-tab="plant">📋 Plantillas</button>
+    </div>
+    <div id="tab-provs" class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;">
+        <h3 style="margin:0;">Proveedores registrados</h3>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="mostrarModalCrearProveedor()" style="background:#059669;">➕ Crear Proveedor</button>
+          <button class="btn btn-sm btn-success" onclick="exportarCSV()">📄 Exportar CSV</button>
+        </div>
+      </div>
+
+      <div style="background:#f9fafb;padding:1rem;border-radius:8px;margin-bottom:1.5rem;">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:1rem;margin-bottom:1rem;">
+          <div style="position:relative;">
+            <input type="text" id="buscador" placeholder="Buscar por nombre, NIT, email o representante..." 
+                   style="width:100%;padding:0.7rem 1rem 0.7rem 2.5rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.95rem;">
+            <span style="position:absolute;left:0.8rem;top:50%;transform:translateY(-50%);color:#9ca3af;">🔍</span>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="limpiarFiltros()">🗑️ Limpiar filtros</button>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="filtro-estado active" data-estado="todos" onclick="filtrarEstado('todos')">
+            📋 Todos <span id="count-todos" class="badge-count">0</span>
+          </button>
+          <button class="filtro-estado" data-estado="aprobado" onclick="filtrarEstado('aprobado')">
+            ✅ Aprobados <span id="count-aprobado" class="badge-count badge-aprobado">0</span>
+          </button>
+          <button class="filtro-estado" data-estado="pendiente" onclick="filtrarEstado('pendiente')">
+            ⏳ Pendientes <span id="count-pendiente" class="badge-count badge-pendiente">0</span>
+          </button>
+          <button class="filtro-estado" data-estado="rechazado" onclick="filtrarEstado('rechazado')">
+            ❌ Rechazados <span id="count-rechazado" class="badge-count badge-rechazado">0</span>
+          </button>
+        </div>
+
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+          <div style="flex:1;min-width:200px;">
+            <label style="display:block;font-size:0.85rem;color:#6b7280;margin-bottom:0.3rem;">Ordenar por:</label>
+            <select id="ordenar" onchange="aplicarFiltros()" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:6px;">
+              <option value="reciente">Más recientes</option>
+              <option value="antiguo">Más antiguos</option>
+              <option value="nombre">Nombre (A-Z)</option>
+              <option value="progreso">Mayor progreso</option>
+              <option value="menor_progreso">Menor progreso</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:200px;">
+            <label style="display:block;font-size:0.85rem;color:#6b7280;margin-bottom:0.3rem;">Progreso mínimo:</label>
+            <select id="progresoMin" onchange="aplicarFiltros()" style="width:100%;padding:0.5rem;border:1px solid #d1d5db;border-radius:6px;">
+              <option value="0">Todos</option>
+              <option value="3">3+ documentos</option>
+              <option value="6">6+ documentos</option>
+              <option value="9">9+ documentos</option>
+              <option value="12">Completos (12)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1rem;color:#6b7280;font-size:0.9rem;">
+        Mostrando <strong id="resultadosCount">0</strong> de <strong id="totalProveedores">0</strong> proveedores
+      </div>
+
+      <div id="listaProveedores"></div>
+    </div>
+    <div id="tab-plant" class="card hidden">
+      <h3>Plantillas para proveedores</h3>
+      <p style="color:#6b7280;font-size:0.9rem;margin:0.5rem 0 1rem;">Sube los formatos que los proveedores deben diligenciar.</p>
+      <div id="listaPlantillas" class="doc-grid"></div>
+    </div>
+  </div>
+
+  <!-- Modal Crear Proveedor -->
+  <div class="modal-overlay" id="modalCrearProveedor">
+    <div class="modal" style="max-width:600px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;">➕ Crear Nuevo Proveedor</h3>
+        <button class="btn btn-sm btn-secondary" onclick="cerrarModalCrearProveedor()">✕ Cerrar</button>
+      </div>
+      <div id="alertaCrearProveedor"></div>
+      <form id="formCrearProveedor">
+        <h4 style="margin-bottom:0.8rem;color:#1e40af;">📋 Datos de acceso</h4>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" name="email" required placeholder="correo@empresa.com">
+          </div>
+          <div class="form-group">
+            <label>Contraseña inicial *</label>
+            <input type="text" name="password" required minlength="8" placeholder="Mín. 8 caracteres">
+            <small style="color:#6b7280;font-size:0.8rem;">Debe tener mayúscula, minúscula, número y especial</small>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nombre de la empresa *</label>
+          <input type="text" name="nombre_empresa" required placeholder="Nombre legal de la empresa">
+        </div>
+        
+        <h4 style="margin:1.5rem 0 0.8rem 0;color:#1e40af;">🏢 Datos de la empresa (opcionales)</h4>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Razón social</label>
+            <input type="text" name="razon_social" placeholder="Razón social">
+          </div>
+          <div class="form-group">
+            <label>NIT / RUT</label>
+            <input type="text" name="rfc" placeholder="NIT o RUT">
+          </div>
+          <div class="form-group">
+            <label>Representante legal</label>
+            <input type="text" name="representante" placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input type="text" name="telefono" placeholder="Número de contacto">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Dirección</label>
+          <textarea name="direccion" rows="2" placeholder="Dirección completa"></textarea>
+        </div>
+        
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalCrearProveedor()" style="flex:1;">Cancelar</button>
+          <button type="submit" class="btn" style="flex:1;background:#059669;">✅ Crear y enviar credenciales</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Proveedor -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:900px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 id="modalTitulo" style="margin:0;">Proveedor</h3>
+        <button class="btn btn-sm btn-secondary" onclick="cerrarModal()">✕ Cerrar</button>
+      </div>
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab active" data-mtab="docs">📄 Documentos</button>
+        <button class="tab" data-mtab="notas">📝 Notas</button>
+        <button class="tab" data-mtab="hist">📜 Historial</button>
+        <button class="tab" data-mtab="rec">📨 Recordatorio</button>
+        <button class="tab" data-mtab="eliminar" style="color:#dc2626;">🗑️ Eliminar</button>
+      </div>
+      <div id="modal-tab-docs"><div id="modalContenido"></div></div>
+      <div id="modal-tab-notas" class="hidden">
+        <div class="card" style="background:#fffbeb;padding:1.5rem;margin-bottom:1rem;">
+          <h4 style="margin-bottom:0.5rem;">📝 Agregar nota para el proveedor</h4>
+          <p style="color:#6b7280;font-size:0.9rem;margin-bottom:1rem;">El proveedor verá esta nota en su panel.</p>
+          <div class="form-group"><label>Título</label><input type="text" id="tituloNota" placeholder="Ej: Corregir NIT..."></div>
+          <div class="form-group"><label>Detalle</label><textarea id="detalleNota" rows="4" placeholder="Describe qué debe modificar..."></textarea></div>
+          <button class="btn" onclick="guardarNota()">💾 Guardar nota</button>
+        </div>
+        <h4 style="margin-bottom:0.8rem;">📋 Notas anteriores</h4>
+        <div id="listaNotas"></div>
+      </div>
+      <div id="modal-tab-hist" class="hidden"><div id="modalHistorial"></div></div>
+      <div id="modal-tab-rec" class="hidden">
+        <div class="card" style="background:#fffbeb;padding:1.5rem;">
+          <h4 style="margin-bottom:0.5rem;">📨 Enviar recordatorio</h4>
+          <div class="form-group"><label>Mensaje</label><textarea id="mensajeRecordatorio" rows="4" placeholder="Ej: Sube los documentos faltantes..."></textarea></div>
+          <button class="btn" onclick="enviarRecordatorio()">Enviar</button>
+          <h4 style="margin-top:1.5rem;margin-bottom:0.5rem;">Historial de recordatorios</h4>
+          <div id="listaRecordatoriosEnviados"></div>
+        </div>
+      </div>
+      <div id="modal-tab-eliminar" class="hidden">
+        <div class="card" style="background:#fee2e2;border:2px solid #dc2626;padding:1.5rem;">
+          <h4 style="margin-bottom:0.5rem;color:#991b1b;">⚠️ Zona peligrosa</h4>
+          <p style="color:#7f1d1d;margin-bottom:1rem;">
+            Esta acción eliminará <strong>permanentemente</strong> toda la información del proveedor:
+          </p>
+          <ul style="color:#7f1d1d;margin-left:1.5rem;margin-bottom:1rem;">
+            <li>Todos los documentos subidos</li>
+            <li>Historial completo</li>
+            <li>Notas y recordatorios</li>
+            <li>Cuenta de usuario</li>
+          </ul>
+          <p style="color:#991b1b;font-weight:600;margin-bottom:1rem;">Esta acción NO se puede deshacer.</p>
+          <button class="btn btn-danger btn-full" onclick="mostrarConfirmacionEliminar()">🗑️ Eliminar proveedor completamente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación Eliminar -->
+  <div class="modal-overlay" id="modalConfirmarEliminar">
+    <div class="modal" style="max-width:500px;">
+      <h3 style="color:#991b1b;">⚠️ Confirmar eliminación</h3>
+      <div id="alertaEliminar"></div>
+      <p style="margin-bottom:1rem;">
+        Estás a punto de eliminar permanentemente al proveedor:
+      </p>
+      <p style="background:#fee2e2;padding:1rem;border-radius:6px;margin-bottom:1rem;font-weight:600;color:#991b1b;">
+        <span id="nombreProveedorEliminar"></span>
+      </p>
+      <div class="form-group">
+        <label>Para confirmar, escribe: <strong>ELIMINAR</strong></label>
+        <input type="text" id="textoConfirmacion" placeholder="Escribe ELIMINAR">
+      </div>
+      <div class="form-group">
+        <label>Contraseña del administrador</label>
+        <input type="password" id="passwordConfirmacion" placeholder="Tu contraseña">
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="cerrarConfirmacionEliminar()" style="flex:1;">Cancelar</button>
+        <button class="btn btn-danger" onclick="ejecutarEliminacion()" style="flex:1;">🗑️ Eliminar definitivamente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Visor PDF -->
+  <div class="modal-overlay" id="modalVisor">
+    <div class="modal" style="max-width:95%;width:1100px;height:92vh;padding:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
+        <h3 id="visorTitulo" style="margin:0;font-size:1rem;flex:1;min-width:200px;">Documento</h3>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <a id="visorDescargar" href="#" class="btn btn-success" style="padding:0.6rem 1.2rem;font-weight:bold;">
+            ⬇️ Descargar PDF
+          </a>
+          <a id="visorNuevaPestana" href="#" target="_blank" class="btn btn-sm btn-secondary">
+            🔗 Abrir en pestaña
+          </a>
+          <button class="btn btn-sm btn-danger" onclick="cerrarVisor()">✕ Cerrar</button>
+        </div>
+      </div>
+      <div style="height:calc(92vh - 80px);background:#525659;border-radius:8px;overflow:hidden;position:relative;">
+        <div id="visorCargando" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:white;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">⏳</div><p>Cargando documento...</p>
+        </div>
+        <iframe id="visorIframe" style="width:100%;height:100%;border:none;display:none;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 🔧 FUNCIÓN HELPER: fetchAPI
+    // ==========================================
+    // Simplifica todas las llamadas fetch y SIEMPRE incluye credentials
+    // Esto es CRÍTICO para Railway/Render (proxy inverso con HTTPS)
+    // NO causa recursión como el interceptor global
+    function fetchAPI(url, options = {}) {
+      return fetch(url, {
+        ...options,
+        credentials: 'include'  // 🔑 Envía cookies de sesión
+      });
+    }
+
+    // ==========================================
+    // 📋 VARIABLES GLOBALES
+    // ==========================================
+    let requeridos = [
+      { tipo:'gaf01', nombre:'GAF04-01-FO-01 Abastacimiento de Bienes y Servicios V11', esPlantilla:true, cantidadMin:1 },
+      { tipo:'gaf07', nombre:'GAF04-01-FO-07 Lavado de activos V2', esPlantilla:true, cantidadMin:1 },
+      { tipo:'gaf08', nombre:'GAF04-01-FO-08 Declaración de Origen de Fondos V2', esPlantilla:true, cantidadMin:1 },
+      { tipo:'rut', nombre:'RUT', esPlantilla:false, cantidadMin:1 },
+      { tipo:'camara_comercio', nombre:'Certificado Cámara de Comercio', esPlantilla:false, cantidadMin:1 },
+      { tipo:'cedula_rl', nombre:'Fotocopia cédula de ciudadanía del Representante Legal', esPlantilla:false, cantidadMin:1 },
+      { tipo:'estados_financieros', nombre:'Estados Financieros', esPlantilla:false, cantidadMin:1 },
+      { tipo:'parafiscales', nombre:'Certificación de parafiscales', esPlantilla:false, cantidadMin:1 },
+      { tipo:'calidad', nombre:'Certificación de calidad (si aplica)', esPlantilla:false, cantidadMin:1, opcional:true },
+      { tipo:'sgsst', nombre:'Seguridad y Salud en el Trabajo', esPlantilla:false, cantidadMin:1 },
+      { tipo:'experiencia', nombre:'Certificados experiencia comercial (mín. 3)', esPlantilla:false, cantidadMin:3 },
+      { tipo:'cuenta_bancaria', nombre:'Certificación de la Cuenta Bancaria', esPlantilla:false, cantidadMin:1 }
+    ];
+    
+    let proveedorActualId = null;
+    let proveedorActualNombre = '';
+    let listaProveedoresCache = [];
+    let listaFiltrada = [];
+    let filtroEstadoActual = 'todos';
+
+    // ==========================================
+    // 📋 FUNCIONES AUXILIARES
+    // ==========================================
+    function fechaArchivo() { 
+      const d = new Date(), p = n => String(n).padStart(2, '0'); 
+      return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; 
+    }
+    
+    function descargarBlob(blob, n) { 
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement('a'); 
+      a.href = u;
+      a.download = n;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(u); 
+    }
+    
+    function formatearFecha(f) { 
+      if (!f) return ''; 
+      return new Date(f.replace(' ', 'T')).toLocaleString('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }); 
+    }
+    
+    function mostrarAlerta(msg, tipo = 'error') { 
+      const el = document.getElementById('alerta'); 
+      el.innerHTML = `<div class="alert alert-${tipo}">${msg}</div>`; 
+      setTimeout(() => el.innerHTML = '', 3000); 
+    }
+
+    // ==========================================
+    // 🚀 INICIALIZACIÓN
+    // ==========================================
+    async function init() {
+      try {
+        const me = await (await fetchAPI('/api/me')).json();
+        if (!me.usuario) return window.location.href = 'index.html';
+        if (me.usuario.rol !== 'admin') return window.location.href = 'proveedor.html';
+        document.getElementById('userEmail').textContent = me.usuario.email;
+        document.getElementById('buscador').addEventListener('input', aplicarFiltros);
+        await cargarProveedores();
+        await cargarPlantillas();
+      } catch (err) {
+        console.error('Error en init:', err);
+        mostrarAlerta('Error al cargar: ' + err.message);
+      }
+    }
+
+    // ==========================================
+    // 👥 GESTIÓN DE PROVEEDORES
+    // ==========================================
+    async function cargarProveedores() {
+      try {
+        const lista = await (await fetchAPI('/api/admin/proveedores')).json();
+        listaProveedoresCache = lista;
+        document.getElementById('count-todos').textContent = lista.length;
+        document.getElementById('count-aprobado').textContent = lista.filter(p => p.estado_general === 'aprobado').length;
+        document.getElementById('count-pendiente').textContent = lista.filter(p => p.estado_general === 'pendiente').length;
+        document.getElementById('count-rechazado').textContent = lista.filter(p => p.estado_general === 'rechazado').length;
+        document.getElementById('totalProveedores').textContent = lista.length;
+        aplicarFiltros();
+      } catch (err) {
+        console.error('Error cargando proveedores:', err);
+      }
+    }
+
+    function aplicarFiltros() {
+      const busqueda = document.getElementById('buscador').value.toLowerCase().trim();
+      const ordenar = document.getElementById('ordenar').value;
+      const progresoMin = parseInt(document.getElementById('progresoMin').value);
+
+      listaFiltrada = listaProveedoresCache.filter(p => {
+        if (filtroEstadoActual !== 'todos' && p.estado_general !== filtroEstadoActual) return false;
+        if (p.aprobados < progresoMin) return false;
+        if (busqueda) {
+          const texto = `${p.razon_social || ''} ${p.nombre_empresa || ''} ${p.rfc || ''} ${p.email || ''} ${p.representante || ''} ${p.telefono || ''}`.toLowerCase();
+          if (!texto.includes(busqueda)) return false;
+        }
+        return true;
+      });
+
+      listaFiltrada.sort((a, b) => {
+        switch(ordenar) {
+          case 'reciente': return b.id - a.id;
+          case 'antiguo': return a.id - b.id;
+          case 'nombre': 
+            const nombreA = (a.razon_social || a.nombre_empresa || '').toLowerCase();
+            const nombreB = (b.razon_social || b.nombre_empresa || '').toLowerCase();
+            return nombreA.localeCompare(nombreB);
+          case 'progreso': return b.aprobados - a.aprobados;
+          case 'menor_progreso': return a.aprobados - b.aprobados;
+          default: return 0;
+        }
+      });
+
+      document.getElementById('resultadosCount').textContent = listaFiltrada.length;
+      renderizarProveedores();
+    }
+
+    function renderizarProveedores() {
+      const cont = document.getElementById('listaProveedores');
+      if (listaFiltrada.length === 0) {
+        cont.innerHTML = '<p style="color:#6b7280;text-align:center;padding:2rem;">No se encontraron proveedores con los filtros aplicados.</p>';
+        return;
+      }
+      cont.innerHTML = listaFiltrada.map(p => `
+        <div class="proveedor-row">
+          <div style="flex:1;">
+            <h4>${p.razon_social||p.nombre_empresa||'Sin nombre'}
+              ${p.recordatorios_pendientes>0?`<span class="badge-recordatorio">📨 ${p.recordatorios_pendientes}</span>`:''}
+              ${p.notas_count>0?`<span class="badge-recordatorio" style="background:#8b5cf6;">📝 ${p.notas_count}</span>`:''}
+            </h4>
+            <small>📧 ${p.email} · NIT: ${p.rfc||'—'} · 📞 ${p.telefono||'—'}</small>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:0.85rem;color:#6b7280;">Docs</div>
+            <strong>${p.aprobados}/${p.total}</strong>
+            <div style="width:60px;height:6px;background:#e5e7eb;border-radius:3px;margin-top:0.3rem;overflow:hidden;">
+              <div style="width:${(p.aprobados/p.total)*100}%;height:100%;background:${p.estado_general==='aprobado'?'#059669':p.estado_general==='rechazado'?'#dc2626':'#f59e0b'};"></div>
+            </div>
+          </div>
+          <span class="badge badge-${p.estado_general}">${p.estado_general}</span>
+          <button class="btn btn-sm" onclick="verProveedor(${p.id})">🔍 Revisar</button>
+        </div>`).join('');
+    }
+
+    function filtrarEstado(estado) {
+      filtroEstadoActual = estado;
+      document.querySelectorAll('.filtro-estado').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.estado === estado);
+      });
+      aplicarFiltros();
+    }
+
+    function limpiarFiltros() {
+      document.getElementById('buscador').value = '';
+      document.getElementById('ordenar').value = 'reciente';
+      document.getElementById('progresoMin').value = '0';
+      filtroEstadoActual = 'todos';
+      document.querySelectorAll('.filtro-estado').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.estado === 'todos');
+      });
+      aplicarFiltros();
+    }
+
+    async function verProveedor(id) {
+  try {
+    console.log(`🔍 Buscando proveedor ID: ${id}`);
+    
+    const response = await fetchAPI(`/api/admin/proveedor/${id}`);
+    
+    // Verificar que la respuesta sea exitosa
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ Error del servidor:', response.status, errorData);
+      mostrarAlerta(`❌ Error al cargar proveedor: ${errorData.error || 'Proveedor no encontrado'}`);
+      return;
+    }
+    
+    const data = await response.json();
+    console.log(' Datos recibidos:', data);
+    
+    // Validar que data.proveedor exista
+    if (!data.proveedor) {
+      console.error('❌ No se recibió información del proveedor:', data);
+      mostrarAlerta('❌ No se encontró información del proveedor');
+      return;
+    }
+    
+    proveedorActualId = id;
+    proveedorActualNombre = data.proveedor.razon_social || data.proveedor.nombre_empresa || `Proveedor ${id}`;
+    
+    document.getElementById('modalTitulo').textContent = proveedorActualNombre;
+    document.querySelectorAll('[data-mtab]').forEach(t => t.classList.remove('active'));
+    document.querySelector('[data-mtab="docs"]').classList.add('active');
+    ['docs','notas','hist','rec','eliminar'].forEach(t => 
+      document.getElementById(`modal-tab-${t}`).classList.toggle('hidden', t !== 'docs')
+    );
+    
+    renderDocs(data.proveedor, data.documentos);
+    document.getElementById('modal').classList.add('active');
+    
+  } catch (error) {
+    console.error('❌ Error en verProveedor:', error);
+    mostrarAlerta(`❌ Error de conexión: ${error.message}`);
+  }
+}
+
+    // ==========================================
+    // 📄 RENDERIZAR DOCUMENTOS
+    // ==========================================
+    function renderDocs(p, docs) {
+      const map = {};
+      docs.forEach(d => { if(!map[d.tipo]) map[d.tipo]=[]; map[d.tipo].push(d); });
+      
+      let html = `<div class="card" style="background:#f9fafb;padding:1rem;margin-bottom:1rem;">
+        <strong>Email:</strong> ${p.email}<br><strong>NIT/RUT:</strong> ${p.rfc||'—'}<br>
+        <strong>Representante:</strong> ${p.representante||'—'}<br><strong>Teléfono:</strong> ${p.telefono||'—'}<br>
+        <strong>Dirección:</strong> ${p.direccion||'—'}</div>
+        <div class="alert alert-info" style="margin-bottom:1rem;">
+          <strong>ℹ️ Información:</strong> Como administrador, puedes subir documentos en nombre del proveedor para agilizar el proceso de registro.
+        </div>
+        <h4 style="margin-bottom:0.8rem;">Documentos</h4><div class="doc-grid">`;
+
+      requeridos.forEach((req, idx) => {
+        const sub = map[req.tipo] || [];
+        const ok = sub.filter(d=>d.estado==='aprobado').length >= req.cantidadMin;
+        html += `<div class="doc-item" style="flex-direction:column;align-items:stretch;">
+          <div style="margin-bottom:0.5rem;">
+            <h4>${idx+1}. ${req.nombre}</h4>
+            <small style="color:#6b7280;">Requeridos: ${req.cantidadMin} · Subidos: ${sub.length}</small>
+            ${ok?'<span class="badge badge-aprobado" style="margin-left:0.5rem;">Completo</span>':''}
+          </div>`;
+        if (!sub.length) {
+          html += '<small style="color:#9ca3af;">📭 No ha subido</small>';
+        } else {
+          sub.forEach(d => {
+            const nombreEscapado = d.nombre_original.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+            html += `<div class="doc-row">
+              <div style="flex:1;min-width:180px;">
+                <small>📎 ${d.nombre_original} <span class="badge badge-${d.estado}">${d.estado}</span></small>
+                ${d.comentario?`<br><small style="color:#991b1b;">💬 ${d.comentario}</small>`:''}
+                <br><small style="color:#9ca3af;">📅 ${formatearFecha(d.subido_en)}</small>
+              </div>
+              <div class="doc-row-actions">
+                <button class="btn btn-sm btn-secondary" onclick="verDocumento('/uploads/${d.archivo}','${nombreEscapado}')">👁️ Ver</button>
+                <a href="/uploads/${d.archivo}?download=true" class="btn btn-sm btn-success">⬇️</a>
+                <button class="btn btn-sm" style="background:#059669;" onclick="cambiarEstado(${d.id},'aprobado')">✓ Aprobar</button>
+                <button class="btn btn-sm btn-danger" onclick="rechazar(${d.id})">✗ Rechazar</button>
+              </div></div>`;
+          });
+        }
+        
+        const noAplicaAdmin = sub.length > 0 && sub[0].no_aplica === 1;
+        
+        if (req.opcional || req.tipo === 'calidad') {
+          html += `<div style="margin-top:0.8rem;padding:0.8rem;background:#fef3c7;border-radius:6px;border:1px solid #fcd34d;">
+            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+              <input type="checkbox" class="checkbox-no-aplica-admin" data-docid="${sub[0]?.id || ''}" data-tipo="${req.tipo}" data-proveedorid="${p.id}" ${noAplicaAdmin ? 'checked' : ''}>
+              <span style="font-weight:500;color:#92400e;">📋 Marcar como "No Aplica" para este proveedor</span>
+            </label>
+            <small style="color:#78350f;display:block;margin-top:0.3rem;">Si marcas esta opción, el documento se aprobará automáticamente como "No aplica"</small>
+          </div>`;
+        }
+        
+        const puedeSubir = req.cantidadMin === 1 ? (sub.length === 0 || (sub[0].estado === 'rechazado' && !noAplicaAdmin)) : true;
+        if (puedeSubir && !noAplicaAdmin) {
+          const label = sub.length === 0 ? '📤 Admin subir PDF' : (req.cantidadMin > 1 ? `➕ Agregar PDF (${sub.length}/${req.cantidadMin})` : '🔄 Reemplazar PDF');
+          html += `<form class="form-upload-admin" data-tipo="${req.tipo}" data-proveedorid="${p.id}" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.8rem;padding:0.8rem;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd;">
+            <span style="font-size:0.85rem;color:#0369a1;font-weight:500;">👤 Admin:</span>
+            <input type="file" name="archivo" required accept=".pdf" style="flex:1;">
+            <button type="submit" class="btn btn-sm" style="background:#0284c7;">${label}</button>
+          </form>`;
+        }
+        
+        html += '</div>';
+      });
+      html += '</div>';
+      document.getElementById('modalContenido').innerHTML = html;
+    }
+
+    // ==========================================
+    // 👁️ VISOR DE DOCUMENTOS
+    // ==========================================
+    function verDocumento(url, nombre) {
+      document.getElementById('visorTitulo').textContent = nombre;
+      document.getElementById('visorDescargar').href = url + '?download=true';
+      document.getElementById('visorDescargar').setAttribute('download', nombre);
+      document.getElementById('visorNuevaPestana').href = url;
+      
+      const iframe = document.getElementById('visorIframe');
+      const cargando = document.getElementById('visorCargando');
+      iframe.style.display = 'none';
+      cargando.style.display = 'block';
+      iframe.src = url;
+      iframe.onload = () => { cargando.style.display='none'; iframe.style.display='block'; };
+      setTimeout(() => { if(cargando.style.display!=='none'){cargando.style.display='none';iframe.style.display='block';} }, 8000);
+      document.getElementById('modalVisor').classList.add('active');
+    }
+
+    function cerrarVisor() {
+      document.getElementById('visorIframe').src = 'about:blank';
+      document.getElementById('modalVisor').classList.remove('active');
+    }
+
+    // ==========================================
+    // ✅ APROBAR / RECHAZAR DOCUMENTOS
+    // ==========================================
+    async function cambiarEstado(docId, estado, comentario = null) {
+      const res = await fetchAPI(`/api/admin/documento/${docId}/estado`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ estado, comentario }) 
+      });
+      if (res.ok) {
+        mostrarAlerta(`Documento ${estado}`, 'success');
+        await cargarProveedores();
+        const data = await (await fetchAPI(`/api/admin/proveedor/${proveedorActualId}`)).json();
+        renderDocs(data.proveedor, data.documentos);
+      } else {
+        const r = await res.json();
+        mostrarAlerta(r.error);
+      }
+    }
+
+    function rechazar(docId) {
+      const c = prompt('Motivo del rechazo (opcional):');
+      if (c === null) return;
+      cambiarEstado(docId, 'rechazado', c);
+    }
+
+    // ==========================================
+    // 📝 NOTAS
+    // ==========================================
+    async function cargarNotas() {
+      if (!proveedorActualId) return;
+      const notas = await (await fetchAPI(`/api/admin/proveedor/${proveedorActualId}/notas`)).json();
+      const cont = document.getElementById('listaNotas');
+      if (!notas.length) { 
+        cont.innerHTML = '<small style="color:#9ca3af;">Sin notas.</small>'; 
+        return; 
+      }
+      cont.innerHTML = notas.map(n => `
+        <div class="nota-item">
+          <div class="nota-header">
+            <strong>📝 ${n.titulo}</strong>
+            <small>🕐 ${formatearFecha(n.creado_en)} · 👤 ${n.admin_nombre}</small>
+          </div>
+          <div class="nota-body">${n.nota}</div>
+        </div>
+      `).join('');
+    }
+
+    async function guardarNota() {
+      const titulo = document.getElementById('tituloNota').value.trim();
+      const nota = document.getElementById('detalleNota').value.trim();
+      if (!nota) { 
+        mostrarAlerta('Escribe el detalle'); 
+        return; 
+      }
+      const res = await fetchAPI(`/api/admin/proveedor/${proveedorActualId}/nota`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ titulo: titulo || 'Nota', nota }) 
+      });
+      if (res.ok) {
+        mostrarAlerta('✅ Nota guardada', 'success');
+        document.getElementById('tituloNota').value = '';
+        document.getElementById('detalleNota').value = '';
+        await cargarNotas(); 
+        await cargarProveedores();
+      } else {
+        const r = await res.json();
+        mostrarAlerta(r.error);
+      }
+    }
+
+    // ==========================================
+    // 📜 HISTORIAL
+    // ==========================================
+    async function cargarHistorialProveedor() {
+      if (!proveedorActualId) return;
+      const hist = await (await fetchAPI(`/api/admin/proveedor/${proveedorActualId}/historial`)).json();
+      const cont = document.getElementById('modalHistorial');
+      if (!hist.length) { 
+        cont.innerHTML = '<div class="historial-vacio">📭 Sin actividad.</div>'; 
+        return; 
+      }
+      cont.innerHTML = '<h4 style="margin-bottom:0.8rem;">Historial completo</h4>' + hist.map(h => {
+        const iconos = {
+          registro: '🎉',
+          documento_subido: '📤',
+          documento_reemplazado: '🔄',
+          documento_eliminado: '🗑️',
+          documento_aprobado: '✅',
+          documento_rechazado: '❌',
+          datos_actualizados: '✏️',
+          recordatorio_enviado: '📨',
+          nota_agregada: '📝',
+          documento_no_aplica: '📋',
+          documento_requiere_carga: '📄'
+        };
+        const clases = {
+          documento_subido: 'subida',
+          documento_reemplazado: 'subida',
+          documento_aprobado: 'aprobado',
+          documento_rechazado: 'rechazado',
+          documento_eliminado: 'eliminado',
+          datos_actualizados: 'datos',
+          recordatorio_enviado: 'recordatorio',
+          nota_agregada: 'recordatorio',
+          registro: 'registro',
+          documento_no_aplica: 'aprobado',
+          documento_requiere_carga: 'datos'
+        };
+        return `
+          <div class="historial-item">
+            <div class="historial-icono ${clases[h.accion] || 'datos'}">${iconos[h.accion] || '📌'}</div>
+            <div class="historial-contenido">
+              <div class="detalle">${h.detalle}</div>
+              <div class="meta">
+                <span>🕐 ${formatearFecha(h.creado_en)}</span>
+                <span class="usuario">👤 ${h.usuario_nombre}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 📨 RECORDATORIOS
+    // ==========================================
+    async function cargarRecordatoriosEnviados() {
+      if (!proveedorActualId) return;
+      const hist = await (await fetchAPI(`/api/admin/proveedor/${proveedorActualId}/historial`)).json();
+      const recs = hist.filter(h => h.accion === 'recordatorio_enviado');
+      const cont = document.getElementById('listaRecordatoriosEnviados');
+      if (!recs.length) { 
+        cont.innerHTML = '<small style="color:#9ca3af;">Sin recordatorios.</small>'; 
+        return; 
+      }
+      cont.innerHTML = recs.map(r => `
+        <div class="historial-item">
+          <div class="historial-icono recordatorio">📨</div>
+          <div class="historial-contenido">
+            <div class="detalle">${r.detalle.replace('Recordatorio enviado: ', '')}</div>
+            <div class="meta">
+              <span>🕐 ${formatearFecha(r.creado_en)}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function enviarRecordatorio() {
+      const msg = document.getElementById('mensajeRecordatorio').value.trim();
+      if (!msg) { 
+        mostrarAlerta('Escribe un mensaje'); 
+        return; 
+      }
+      const res = await fetchAPI(`/api/admin/proveedor/${proveedorActualId}/recordatorio`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ mensaje: msg }) 
+      });
+      if (res.ok) {
+        mostrarAlerta('✅ Recordatorio enviado', 'success');
+        document.getElementById('mensajeRecordatorio').value = '';
+        await cargarRecordatoriosEnviados(); 
+        await cargarProveedores();
+      } else {
+        const r = await res.json();
+        mostrarAlerta(r.error);
+      }
+    }
+
+    // ==========================================
+    // 🗑️ ELIMINAR PROVEEDOR
+    // ==========================================
+    function mostrarConfirmacionEliminar() {
+      document.getElementById('nombreProveedorEliminar').textContent = proveedorActualNombre;
+      document.getElementById('textoConfirmacion').value = '';
+      document.getElementById('passwordConfirmacion').value = '';
+      document.getElementById('alertaEliminar').innerHTML = '';
+      document.getElementById('modalConfirmarEliminar').classList.add('active');
+    }
+
+    function cerrarConfirmacionEliminar() {
+      document.getElementById('modalConfirmarEliminar').classList.remove('active');
+    }
+
+    async function ejecutarEliminacion() {
+      const texto = document.getElementById('textoConfirmacion').value.trim();
+      const password = document.getElementById('passwordConfirmacion').value;
+      const alertaEl = document.getElementById('alertaEliminar');
+
+      if (texto !== 'ELIMINAR') {
+        alertaEl.innerHTML = '<div class="alert alert-error">Debes escribir exactamente "ELIMINAR" para confirmar</div>';
+        return;
+      }
+      if (!password) {
+        alertaEl.innerHTML = '<div class="alert alert-error">Debes ingresar tu contraseña de administrador</div>';
+        return;
+      }
+
+      if (!confirm(`⚠️ ÚLTIMA ADVERTENCIA\n\n¿Estás 100% seguro de eliminar a "${proveedorActualNombre}"?\n\nEsta acción es PERMANENTE y NO se puede deshacer.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetchAPI(`/api/admin/proveedor/${proveedorActualId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const r = await res.json();
+
+        if (res.ok) {
+          alertaEl.innerHTML = `<div class="alert alert-success">✅ ${r.mensaje}</div>`;
+          setTimeout(() => {
+            cerrarConfirmacionEliminar();
+            cerrarModal();
+            cargarProveedores();
+            mostrarAlerta('Proveedor eliminado correctamente', 'success');
+          }, 1500);
+        } else {
+          alertaEl.innerHTML = `<div class="alert alert-error">❌ ${r.error}</div>`;
+        }
+      } catch (err) {
+        alertaEl.innerHTML = `<div class="alert alert-error">❌ Error: ${err.message}</div>`;
+      }
+    }
+
+    function cerrarModal() { 
+      document.getElementById('modal').classList.remove('active'); 
+      proveedorActualId = null;
+      proveedorActualNombre = '';
+    }
+
+    // ==========================================
+    // 📋 PLANTILLAS
+    // ==========================================
+    async function cargarPlantillas() {
+      try {
+        const plantillas = await (await fetchAPI('/api/admin/plantillas')).json();
+        const map = {}; 
+        plantillas.forEach(p => map[p.tipo] = p);
+        const cont = document.getElementById('listaPlantillas'); 
+        cont.innerHTML = '';
+        
+        requeridos.filter(r => r.esPlantilla).forEach(req => {
+          const p = map[req.tipo];
+          const div = document.createElement('div'); 
+          div.className = 'doc-item'; 
+          div.style.cssText = 'flex-direction:column;align-items:stretch;';
+          
+          div.innerHTML = `
+            <div style="margin-bottom:0.5rem;"><h4>${req.nombre}</h4></div>
+            ${p ? `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem;background:#f9fafb;border-radius:6px;margin-bottom:0.5rem;">
+                <small>✅ ${p.nombre_original}</small>
+                <a href="/plantillas/${p.archivo}" target="_blank" class="btn btn-sm btn-secondary">Ver</a>
+              </div>
+            ` : `
+              <div class="alert" style="background:#fee2e2;color:#991b1b;padding:0.5rem;margin-bottom:0.5rem;">⚠️ Sin plantilla</div>
+            `}
+            <form class="form-plantilla" data-tipo="${req.tipo}" style="display:flex;gap:0.5rem;align-items:center;">
+              <input type="file" name="archivo" required accept=".pdf,.doc,.docx,.xls,.xlsx">
+              <button type="submit" class="btn btn-sm">${p ? 'Reemplazar' : 'Subir'}</button>
+            </form>
+          `;
+          cont.appendChild(div);
+        });
+        
+        document.querySelectorAll('.form-plantilla').forEach(form => {
+          form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const fd = new FormData(e.target); 
+            fd.append('tipo', form.dataset.tipo);
+            const res = await fetchAPI('/api/admin/plantilla', { method: 'POST', body: fd });
+            if (res.ok) { 
+              mostrarAlerta('✅ Plantilla cargada', 'success'); 
+              cargarPlantillas(); 
+            } else { 
+              const r = await res.json(); 
+              mostrarAlerta(r.error); 
+            }
+          });
+        });
+      } catch (err) {
+        console.error('Error cargando plantillas:', err);
+      }
+    }
+
+    // ==========================================
+    // 📤 EXPORTAR CSV
+    // ==========================================
+    function exportarCSV() {
+      if (!listaFiltrada.length) { 
+        mostrarAlerta('No hay proveedores para exportar'); 
+        return; 
+      }
+      const h = ['Razón Social','NIT/RUT','Correo','Teléfono','Representante Legal','Dirección','Estado','Docs Aprobados','Total','Fecha Aprobación'];
+      const filas = listaFiltrada.map(p => [
+        p.razon_social || p.nombre_empresa || '', 
+        p.rfc || '', 
+        p.email || '', 
+        p.telefono || '',
+        p.representante || '', 
+        (p.direccion || '').replace(/[\n\r]+/g, ' '), 
+        p.estado_general || '',
+        p.aprobados || 0, 
+        p.total || 0, 
+        p.fecha_aprobacion ? formatearFecha(p.fecha_aprobacion) : 'Pendiente'
+      ]);
+      const csv = '\uFEFF' + [h.join(';'), ...filas.map(f => f.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      descargarBlob(blob, `proveedores_${fechaArchivo()}.csv`);
+      mostrarAlerta('✅ CSV exportado', 'success');
+    }
+
+    // ==========================================
+    // 🔐 CREAR PROVEEDOR
+    // ==========================================
+    function mostrarModalCrearProveedor() {
+      document.getElementById('formCrearProveedor').reset();
+      document.getElementById('alertaCrearProveedor').innerHTML = '';
+      document.getElementById('modalCrearProveedor').classList.add('active');
+    }
+
+    function cerrarModalCrearProveedor() {
+      document.getElementById('modalCrearProveedor').classList.remove('active');
+    }
+
+    document.getElementById('formCrearProveedor').addEventListener('submit', async e => {
+      e.preventDefault();
+      const alertaEl = document.getElementById('alertaCrearProveedor');
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+      
+      try {
+        const res = await fetchAPI('/api/admin/proveedor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const r = await res.json();
+        
+        if (res.ok) {
+          alertaEl.innerHTML = `<div class="alert alert-success">✅ ${r.mensaje}</div>`;
+          
+          setTimeout(async () => {
+            cerrarModalCrearProveedor();
+            await cargarProveedores();
+            
+            if (r.proveedorId) {
+              await verProveedor(r.proveedorId);
+              mostrarAlerta('Proveedor creado. Revisa y gestiona sus documentos.', 'success');
+            }
+          }, 1500);
+        } else {
+          alertaEl.innerHTML = `<div class="alert alert-error">❌ ${r.error}</div>`;
+        }
+      } catch (err) {
+        alertaEl.innerHTML = `<div class="alert alert-error">❌ Error: ${err.message}</div>`;
+      }
+    });
+
+    // ==========================================
+    // 🚪 LOGOUT
+    // ==========================================
+    async function logout() {
+      await fetchAPI('/api/logout', { method: 'POST' });
+      window.location.href = 'index.html';
+    }
+
+    // ==========================================
+    // 🎯 EVENT LISTENERS DE NAVEGACIÓN
+    // ==========================================
+    document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-provs').classList.toggle('hidden', tab.dataset.tab !== 'provs');
+        document.getElementById('tab-plant').classList.toggle('hidden', tab.dataset.tab !== 'plant');
+      });
+    });
+
+    document.querySelectorAll('[data-mtab]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-mtab]').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const tgt = tab.dataset.mtab;
+        ['docs','notas','hist','rec','eliminar'].forEach(t => 
+          document.getElementById(`modal-tab-${t}`).classList.toggle('hidden', t !== tgt)
+        );
+        if (tgt === 'hist') cargarHistorialProveedor();
+        if (tgt === 'rec') cargarRecordatoriosEnviados();
+        if (tgt === 'notas') cargarNotas();
+      });
+    });
+
+    document.getElementById('modal').addEventListener('click', e => {
+      if (e.target.id === 'modal') cerrarModal();
+    });
+    
+    document.getElementById('modalVisor').addEventListener('click', e => {
+      if (e.target.id === 'modalVisor') cerrarVisor();
+    });
+    
+    document.getElementById('modalConfirmarEliminar').addEventListener('click', e => {
+      if (e.target.id === 'modalConfirmarEliminar') cerrarConfirmacionEliminar();
+    });
+    
+    document.getElementById('modalCrearProveedor').addEventListener('click', e => {
+      if (e.target.id === 'modalCrearProveedor') cerrarModalCrearProveedor();
+    });
+
+    // ==========================================
+    // 🎯 EVENT LISTENERS GLOBALES (DELEGACIÓN)
+    // ==========================================
+    let adminFormSubmitted = false;
+    let noAplicaChanged = false;
+
+    // Delegación para formularios de admin (subir archivos)
+    document.addEventListener('submit', async function(e) {
+      if (e.target.classList.contains('form-upload-admin')) {
+        if (adminFormSubmitted) return;
+        adminFormSubmitted = true;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const form = e.target;
+        const fd = new FormData(form);
+        const tipo = form.dataset.tipo;
+        const proveedorId = form.dataset.proveedorid;
+        
+        if (!tipo || !proveedorId) {
+          mostrarAlerta('❌ Error: Faltan datos del formulario');
+          adminFormSubmitted = false;
+          return;
+        }
+        
+        fd.append('tipo', tipo);
+        
+        try {
+          const res = await fetchAPI(`/api/admin/proveedor/${proveedorId}/documento`, { 
+            method: 'POST', 
+            body: fd 
+          });
+          const r = await res.json();
+          
+          if (res.ok) {
+            mostrarAlerta(`✅ ${r.mensaje}`, 'success');
+            const data = await (await fetchAPI(`/api/admin/proveedor/${proveedorId}`)).json();
+            renderDocs(data.proveedor, data.documentos);
+            await cargarProveedores();
+          } else {
+            mostrarAlerta(`❌ ${r.error || 'Error desconocido'}`);
+          }
+        } catch (err) {
+          console.error('Error subiendo documento:', err);
+          mostrarAlerta('❌ Error al subir el documento: ' + err.message);
+        } finally {
+          setTimeout(() => { adminFormSubmitted = false; }, 500);
+        }
+      }
+    });
+
+    // Delegación para checkboxes "No Aplica"
+    document.addEventListener('change', async function(e) {
+      if (e.target.classList.contains('checkbox-no-aplica-admin')) {
+        if (noAplicaChanged) return;
+        noAplicaChanged = true;
+        
+        const checkbox = e.target;
+        const docId = checkbox.dataset.docid;
+        const tipo = checkbox.dataset.tipo;
+        const proveedorId = checkbox.dataset.proveedorid;
+        const noAplica = checkbox.checked;
+        
+        try {
+          let url;
+          if (docId && docId !== '') {
+            url = `/api/admin/proveedor/${proveedorId}/documento/${docId}/no-aplica`;
+          } else {
+            url = `/api/admin/proveedor/${proveedorId}/documento/0/no-aplica`;
+          }
+          
+          const res = await fetchAPI(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ no_aplica: noAplica, tipo: tipo })
+          });
+          const r = await res.json();
+          
+          if (res.ok) {
+            mostrarAlerta(
+              noAplica ? '✅ Documento marcado como "No Aplica"' : '✅ Documento ahora requiere carga', 
+              'success'
+            );
+            const data = await (await fetchAPI(`/api/admin/proveedor/${proveedorId}`)).json();
+            renderDocs(data.proveedor, data.documentos);
+            await cargarProveedores();
+          } else {
+            mostrarAlerta(`❌ ${r.error}`);
+            checkbox.checked = !noAplica;
+          }
+        } catch (err) {
+          console.error('Error:', err);
+          mostrarAlerta('Error al actualizar');
+          checkbox.checked = !noAplica;
+        } finally {
+          setTimeout(() => { noAplicaChanged = false; }, 500);
+        }
+      }
+    });
+
+    // ==========================================
+    // 🚀 INICIAR APLICACIÓN
+    // ==========================================
+    console.log('✅ Panel de Administración cargado');
+    console.log('🔧 fetchAPI helper activo (credentials: include)');
+    init();
+  </script>
+</body>
+</html>

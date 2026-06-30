@@ -1,0 +1,29 @@
+# Scripts de mantenimiento
+reset-admin.js
+
+# Dependencias
+node_modules/
+
+# Variables de entorno (NUNCA subir secretos)
+.env
+
+# Archivos subidos por usuarios
+uploads/
+plantillas/
+
+# Sesiones
+sessions/
+
+# Base de datos (si se genera localmente)
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
