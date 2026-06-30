@@ -513,11 +513,24 @@ app.get('/api/proveedor/info', requiereLogin, (req, res) => {
 });
 
 app.post('/api/proveedor/datos', requiereLogin, (req, res) => {
-  const { razon_social, rfc, representante, telefono, direccion } = req.body;
-  const prov = db.prepare('SELECT * FROM proveedores WHERE usuario_id = ?').get(req.session.usuario.id);
-  db.prepare('UPDATE proveedores SET razon_social=?, rfc=?, representante=?, telefono=?, direccion=? WHERE usuario_id=?').run(razon_social, rfc, representante, telefono, direccion, req.session.usuario.id);
-  registrarHistorial(prov.id, req.session.usuario, 'datos_actualizados', `Datos actualizados. Razón social: ${razon_social || '—'}`, null, null, req);
-  res.json({ ok: true });
+    const { razon_social, rfc, representante, telefono, direccion } = req.body;
+    
+    // 🛡️ VALIDACIÓN OBLIGATORIA: El backend exige que los 5 campos estén llenos
+    if (!razon_social || !rfc || !representante || !telefono || !direccion ||
+        !razon_social.trim() || !rfc.trim() || !representante.trim() || !telefono.trim() || !direccion.trim()) {
+        return res.status(400).json({ error: 'Todos los datos de la empresa son obligatorios para desbloquear el portal.' });
+    }
+
+    const prov = db.prepare('SELECT * FROM proveedores WHERE usuario_id = ?').get(req.session.usuario.id);
+    
+    // Guardar datos limpios (sin espacios extra)
+    db.prepare('UPDATE proveedores SET razon_social=?, rfc=?, representante=?, telefono=?, direccion=? WHERE usuario_id=?')
+        .run(razon_social.trim(), rfc.trim(), representante.trim(), telefono.trim(), direccion.trim(), req.session.usuario.id);
+        
+    registrarHistorial(prov.id, req.session.usuario, 'datos_actualizados', `Datos de empresa completados. Razón social: ${razon_social}`, null, null, req);
+    
+    // Devolvemos ok: true para que el frontend sepa que puede desbloquear el panel
+    res.json({ ok: true, perfil_completo: true });
 });
 
 // 📄 PROVEEDOR SUBE/REEMPLAZA DOCUMENTO (con notificación al admin)

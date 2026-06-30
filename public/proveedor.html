@@ -64,6 +64,35 @@
         overflow: hidden;
       }
     }
+
+    /* ==========================================
+       🚫 ESTILOS PARA BLOQUEO DE PERFIL INCOMPLETO
+       ========================================== */
+    .tab-bloqueada {
+      opacity: 0.4 !important;
+      pointer-events: none !important;
+      cursor: not-allowed !important;
+      filter: grayscale(100%);
+    }
+
+    .alerta-perfil-incompleto {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      border-left: 5px solid #dc2626;
+      color: #991b1b;
+      padding: 1.2rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      text-align: center;
+      display: none;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -77,6 +106,14 @@
   
   <div class="container">
     <div id="alerta"></div>
+
+    <!-- ==========================================
+         🚨 ALERTA DE PERFIL INCOMPLETO (NUEVO)
+         Se muestra si el proveedor no ha llenado sus datos
+         ========================================== -->
+    <div id="alerta-perfil-incompleto" class="alerta-perfil-incompleto">
+      ⚠️ <strong>Acción Requerida:</strong> Para continuar usando el portal y subir documentos, debes completar los datos de tu empresa.
+    </div>
     
     <!-- Estado del registro -->
     <div class="card" style="background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%);border-left:4px solid #1e40af;">
@@ -219,6 +256,7 @@
     // ==========================================
     let requeridos = [];
     let documentos = [];
+    let perfilCompleto = false; // 🚫 NUEVO: Controla si el usuario puede ver otras pestañas
 
     // ==========================================
     // 📋 FUNCIONES AUXILIARES
@@ -245,6 +283,58 @@
       const el = document.getElementById('alertaPassword');
       el.innerHTML = `<div class="alert alert-${tipo}">${msg}</div>`;
       setTimeout(() => el.innerHTML = '', 5000);
+    }
+
+    // ==========================================
+    // 🚫 NUEVO: VERIFICAR Y BLOQUEAR PERFIL
+    // ==========================================
+    /**
+     * Verifica si los datos de la empresa están llenos.
+     * Si no lo están, bloquea las pestañas de Documentos e Historial,
+     * muestra una alerta y fuerza al usuario a ir a la pestaña "Mis datos".
+     */
+    function verificarYBloquearPerfil(prov) {
+      // Verificar si los 5 campos obligatorios están llenos
+      perfilCompleto = (
+        prov.razon_social && prov.razon_social.trim() !== '' &&
+        prov.rfc && prov.rfc.trim() !== '' &&
+        prov.representante && prov.representante.trim() !== '' &&
+        prov.telefono && prov.telefono.trim() !== '' &&
+        prov.direccion && prov.direccion.trim() !== ''
+      );
+
+      const alerta = document.getElementById('alerta-perfil-incompleto');
+      const tabs = document.querySelectorAll('.tab');
+
+      if (!perfilCompleto) {
+        // 1. Mostrar la alerta de acción requerida
+        alerta.style.display = 'block';
+
+        // 2. Bloquear visualmente las pestañas que no son "Mis datos"
+        tabs.forEach(tab => {
+          if (tab.dataset.tab !== 'datos') {
+            tab.classList.add('tab-bloqueada');
+          } else {
+            tab.classList.remove('tab-bloqueada');
+            // Forzar al usuario a ir a la pestaña de datos
+            if (!tab.classList.contains('active')) {
+              tab.click();
+            }
+          }
+        });
+
+        // 3. Ocultar las secciones de documentos e historial
+        document.getElementById('tab-docs').classList.add('hidden');
+        document.getElementById('tab-hist').classList.add('hidden');
+        document.getElementById('tab-datos').classList.remove('hidden');
+
+        console.log('🚫 Perfil incompleto: Panel bloqueado');
+      } else {
+        // Si el perfil SÍ está completo, desbloquear todo
+        alerta.style.display = 'none';
+        tabs.forEach(tab => tab.classList.remove('tab-bloqueada'));
+        console.log('✅ Perfil completo: Panel desbloqueado');
+      }
     }
 
     // ==========================================
@@ -276,17 +366,22 @@
           document.getElementById('estadoGeneral').style.color = 
             prov.estado_general === 'aprobado' ? '#059669' : 
             prov.estado_general === 'rechazado' ? '#dc2626' : '#d97706';
+
+          // 🚫 NUEVO: Verificar si el perfil está completo y aplicar bloqueo si es necesario
+          verificarYBloquearPerfil(prov);
         }
 
-        // Cargar requerimientos y documentos
-        requeridos = await (await fetchAPI('/api/proveedor/requerimientos')).json();
-        documentos = await (await fetchAPI('/api/proveedor/documentos')).json();
-        
-        document.getElementById('docsTotal').textContent = requeridos.length;
-        
-        renderDocumentos();
-        await cargarRecordatorios();
-        await cargarNotas();
+        // Cargar requerimientos y documentos (solo si el perfil está completo)
+        if (perfilCompleto) {
+          requeridos = await (await fetchAPI('/api/proveedor/requerimientos')).json();
+          documentos = await (await fetchAPI('/api/proveedor/documentos')).json();
+          
+          document.getElementById('docsTotal').textContent = requeridos.length;
+          
+          renderDocumentos();
+          await cargarRecordatorios();
+          await cargarNotas();
+        }
       } catch (err) {
         console.error('Error en init:', err);
         mostrarAlerta('Error al cargar: ' + err.message);
@@ -711,6 +806,21 @@ async function cerrarElemento(boton, id, tipo) {
         
         if (res.ok) {
           mostrarAlerta('✅ Datos guardados correctamente', 'success');
+          
+          // 🚫 NUEVO: Si el perfil quedó completo, recargar la página para desbloquear el panel
+          const prov = await (await fetchAPI('/api/proveedor/info')).json();
+          const perfilAhoraCompleto = (
+            prov.razon_social && prov.razon_social.trim() !== '' &&
+            prov.rfc && prov.rfc.trim() !== '' &&
+            prov.representante && prov.representante.trim() !== '' &&
+            prov.telefono && prov.telefono.trim() !== '' &&
+            prov.direccion && prov.direccion.trim() !== ''
+          );
+          
+          if (perfilAhoraCompleto && !perfilCompleto) {
+            // Recargar la página para desbloquear las pestañas
+            location.reload();
+          }
         } else {
           const r = await res.json();
           mostrarAlerta(`❌ ${r.error}`);
@@ -783,6 +893,9 @@ async function cerrarElemento(boton, id, tipo) {
     // ==========================================
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
+        // 🚫 NUEVO: Si el tab está bloqueado, no hacer nada
+        if (tab.classList.contains('tab-bloqueada')) return;
+
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         
@@ -805,6 +918,7 @@ async function cerrarElemento(boton, id, tipo) {
     console.log('✅ Panel del Proveedor cargado');
     console.log('🔧 fetchAPI helper activo (credentials: include)');
     console.log('❌ Botón X para cerrar notas/recordatorios activo');
+    console.log('🚫 Bloqueo de perfil incompleto activo');
     init();
   </script>
 </body>
