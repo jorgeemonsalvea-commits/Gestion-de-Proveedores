@@ -66,7 +66,7 @@ function emailProveedorSubioDocumento(nombreProveedor, nombreDocumento, nombreAr
                 </div>
                 <p>Ingresa al panel de administración para revisarlo.</p>
                 <div style="text-align: center; margin-top: 20px;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}/admin.html" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}/admin.html" 
                        style="background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                         Ir al Panel Admin
                     </a>
@@ -101,7 +101,7 @@ function emailDocumentoRechazado(nombreProveedor, nombreDocumento, motivo) {
                 ${motivoHtml}
                 <p>Por favor, ingresa al portal para subir una versión corregida.</p>
                 <div style="text-align: center; margin-top: 20px;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}/proveedor.html" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}/proveedor.html" 
                        style="background: #c2410c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                         Ir al Portal
                     </a>
@@ -136,7 +136,7 @@ function emailProveedorAprobado(nombreProveedor) {
                 <p>Ahora formas parte de nuestro directorio de proveedores autorizados. Nuestro equipo de compras podrá contactarte para futuras oportunidades de negocio.</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}/proveedor.html" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}/proveedor.html" 
                        style="background: #059669; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;">
                         Ir a mi Panel de Proveedor
                     </a>
@@ -173,7 +173,7 @@ function emailNuevaNota(nombreProveedor, titulo, nota) {
                 
                 <p>Ingresa al portal para ver más detalles.</p>
                 <div style="text-align: center; margin-top: 20px;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}/proveedor.html" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}/proveedor.html" 
                        style="background: #c2410c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                         Ver en el Portal
                     </a>
@@ -206,7 +206,7 @@ function emailBienvenidaProveedor(email, password, nombreEmpresa) {
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}" 
                        style="background: #7c3aed; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
                         Ingresar al Portal
                     </a>
@@ -241,7 +241,7 @@ function emailRecordatorio(nombreProveedor, mensaje) {
                 
                 <p>Por favor, ingresa al portal para atender este recordatorio.</p>
                 <div style="text-align: center; margin-top: 20px;">
-                    <a href="${process.env.APP_URL || 'https://tu-portal.up.railway.app'}/proveedor.html" 
+                    <a href="${process.env.APP_URL || 'https://gestion-de-proveedores-production.up.railway.app/'}/proveedor.html" 
                        style="background: #c2410c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
                         Ir al Portal
                     </a>
